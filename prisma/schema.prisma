@@ -1,0 +1,227 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String      @id @default(cuid())
+  name          String?
+  email         String?     @unique
+  emailVerified DateTime?
+  image         String?
+  accounts      Account[]
+  sessions      Session[]
+  userProdes    UserProde[]
+  ProdeRoom     ProdeRoom[]
+
+  blocked     Boolean @default(false)
+  prodePublic Boolean @default(true)
+  background  String  @default("background-1")
+  dark        Boolean @default(false)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Country {
+  id   String @id @default(cuid())
+  code String
+  name String @unique
+
+  matchesLeft        Match[]                @relation("CountryLeft")
+  matchesRight       Match[]                @relation("CountryRight")
+  finalsMatchesLeft  ProdeUserFinalsMatch[] @relation("FinalsCountryLeft")
+  finalsMatchesRight ProdeUserFinalsMatch[] @relation("FinalsCountryRight")
+}
+
+enum ProdeStage {
+  GROUPS
+  FINALS
+}
+
+model Prode {
+  id String @id @default(cuid())
+
+  stage ProdeStage
+
+  created              DateTime
+  groupSubmissionsEnd  DateTime
+  finalsSubmissionsEnd DateTime
+  prodeEnd             DateTime
+
+  Match     Match[]
+  prodeRoom ProdeRoom[]
+  UserProde UserProde[]
+}
+
+enum Stage {
+  GROUP_A
+  GROUP_B
+  GROUP_C
+  GROUP_D
+  GROUP_E
+  GROUP_F
+  GROUP_G
+  GROUP_H
+  FINALS_8_1
+  FINALS_8_2
+  FINALS_8_3
+  FINALS_8_4
+  FINALS_8_5
+  FINALS_8_6
+  FINALS_8_7
+  FINALS_8_8
+  FINALS_4_1
+  FINALS_4_2
+  FINALS_4_3
+  FINALS_4_4
+  FINALS_2_1
+  FINALS_2_2
+  FINALS
+  THIRD_PLACE
+}
+
+model Match {
+  id String @id @default(cuid())
+
+  date          DateTime
+  stage         Stage
+  goalsLeft     Int?
+  goalsRight    Int?
+  penaltisLeft  Int?
+  penaltisRight Int?
+  filled        Boolean  @default(false)
+
+  countryLeftId String?
+  countryLeft   Country? @relation("CountryLeft", fields: [countryLeftId], references: [id])
+
+  countryRightId String?
+  countryRight   Country? @relation("CountryRight", fields: [countryRightId], references: [id])
+
+  prodeId String
+  prode   Prode  @relation(fields: [prodeId], references: [id])
+
+  userResults      ProdeUserGroupMatch[]
+  userFinalResults ProdeUserFinalsMatch[]
+}
+
+model ProdeRoom {
+  id      String   @id @default(cuid())
+  created DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  prodeId String
+  prode   Prode  @relation(fields: [prodeId], references: [id])
+
+  name     String  @unique()
+  password String?
+  public   Boolean
+
+  emailDomain String?
+
+  pointsWinner Int         @default(1)
+  pointsGoals  Int         @default(3)
+  pointsPenal  Int         @default(5)
+  UserProde    UserProde[]
+}
+
+model UserProde {
+  id String @id @default(cuid())
+
+  created DateTime
+
+  template Boolean @default(false)
+
+  prodeRoomId String?
+  prodeRoom   ProdeRoom? @relation(fields: [prodeRoomId], references: [id])
+
+  prodeId String
+  prode   Prode  @relation(fields: [prodeId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  matches       ProdeUserGroupMatch[]
+  finalsMatches ProdeUserFinalsMatch[]
+
+  @@unique([userId, prodeRoomId])
+}
+
+model ProdeUserGroupMatch {
+  id String @id @default(cuid())
+
+  goalsLeft  Int
+  goalsRight Int
+
+  userProdeId String
+  userProde   UserProde @relation(fields: [userProdeId], references: [id])
+
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id])
+
+  @@unique([userProdeId, matchId])
+}
+
+model ProdeUserFinalsMatch {
+  id String @id @default(cuid())
+
+  goalsLeft     Int
+  goalsRight    Int
+  penaltisLeft  Int?
+  penaltisRight Int?
+
+  countryLeftId String
+  countryLeft   Country @relation("FinalsCountryLeft", fields: [countryLeftId], references: [id])
+
+  countryRightId String
+  countryRight   Country @relation("FinalsCountryRight", fields: [countryRightId], references: [id])
+
+  userProdeId String
+  userProde   UserProde @relation(fields: [userProdeId], references: [id])
+
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id])
+
+  @@unique([userProdeId, matchId])
+}
