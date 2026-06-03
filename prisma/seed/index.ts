@@ -14,9 +14,9 @@ async function main() {
       id: "wc2026",
       stage: "GROUPS",
       created: new Date(),
-      groupSubmissionsEnd: new Date("2026-06-11T13:00:00.000Z"),
-      finalsSubmissionsEnd: new Date("2026-07-04T17:00:00.000Z"),
-      prodeEnd: new Date("2026-07-19T19:00:00.000Z"),
+      groupSubmissionsEnd: new Date("2026-06-11T19:00:00.000Z"), // first kick-off UTC
+      finalsSubmissionsEnd: new Date("2026-06-28T19:00:00.000Z"), // R32 first kick-off UTC
+      prodeEnd: new Date("2026-07-19T19:00:00.000Z"), // Final kick-off UTC
     },
     update: {},
   });
