@@ -1,7 +1,7 @@
 version: "3"
 services:
   prode-db:
-    image: amd64/postgres:15.1
+    image: postgres:15.1
     container_name: prode-db
     restart: always
     environment:

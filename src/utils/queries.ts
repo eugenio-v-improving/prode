@@ -1,7 +1,7 @@
-import { Match, ProdeRoom, User, UserProde } from "@prisma/client";
+import { Match, ProdeRoom, User, UserProde } from '@/generated/prisma';
 import { prisma } from "../lib";
-import { getNextTenMinutesDate } from "./date";
 import { matchCountriesMatchStatus, matchFinalResultStatus } from "./points";
+export { computeGroupMatchPoints, computeFinalMatchPoints, finalMatchPoints } from "@/lib/scoring";
 import {
   getFullRankingQuery,
   getRankingQuery,
@@ -30,6 +30,33 @@ export async function finalsStarted() {
     },
   });
   return prode?.stage === "FINALS";
+}
+
+function isDeadlineReached(deadline: Date) {
+  return deadline.getTime() <= Date.now();
+}
+
+type ProdeRoomWithDeadlines = ProdeRoom & {
+  prode: {
+    groupSubmissionsEnd: Date;
+    finalsSubmissionsEnd: Date;
+  };
+};
+
+export function groupSubmissionsEnded(room: {
+  prode: {
+    groupSubmissionsEnd: Date;
+  };
+}) {
+  return isDeadlineReached(room.prode.groupSubmissionsEnd);
+}
+
+export function finalsSubmissionsEnded(room: {
+  prode: {
+    finalsSubmissionsEnd: Date;
+  };
+}) {
+  return isDeadlineReached(room.prode.finalsSubmissionsEnd);
 }
 
 export async function getUserByEmail(email: string) {
@@ -216,7 +243,10 @@ export async function registerUserToRoom(room: ProdeRoom, user: User) {
   return userProde;
 }
 
-export async function getUserFinalMatches(room: ProdeRoom, user: User) {
+export async function getUserFinalMatches(
+  room: ProdeRoomWithDeadlines,
+  user: User
+) {
   return (
     await prisma.match.findMany({
       where: {
@@ -265,7 +295,11 @@ export async function getUserFinalMatches(room: ProdeRoom, user: User) {
           ? matchFinalResultStatus(match, match.userFinalResults[0])
           : null,
 
-      disabled: match.date < getNextTenMinutesDate(),
+      disabled: finalsSubmissionsEnded({
+        prode: {
+          finalsSubmissionsEnd: room.prode.finalsSubmissionsEnd,
+        },
+      }),
 
       goalsLeft: match.goalsLeft,
       penaltisLeft: match.penaltisLeft,
@@ -329,7 +363,11 @@ export async function getUserTemplateFinalMatches(user: User) {
       stage: match.stage,
       filled: match.filled,
 
-      disabled: match.date < getNextTenMinutesDate(),
+      disabled: finalsSubmissionsEnded({
+        prode: {
+          finalsSubmissionsEnd: prode.finalsSubmissionsEnd,
+        },
+      }),
 
       countryStatus: match.userFinalResults[0]
         ? matchCountriesMatchStatus(match, match.userFinalResults[0])
@@ -358,7 +396,10 @@ export async function getUserTemplateFinalMatches(user: User) {
     }));
 }
 
-export async function getUserGroupMatches(room: ProdeRoom, user: User) {
+export async function getUserGroupMatches(
+  room: ProdeRoomWithDeadlines,
+  user: User
+) {
   return (
     await prisma.match.findMany({
       where: {
@@ -398,7 +439,11 @@ export async function getUserGroupMatches(room: ProdeRoom, user: User) {
       stage: match.stage,
       filled: match.filled,
 
-      disabled: match.date < getNextTenMinutesDate(),
+      disabled: groupSubmissionsEnded({
+        prode: {
+          groupSubmissionsEnd: room.prode.groupSubmissionsEnd,
+        },
+      }),
 
       goalsLeft: match.goalsLeft,
       userGoalsLeft: match.userResults[0]?.goalsLeft ?? null,
@@ -454,7 +499,11 @@ export async function getUserTemplateGroupMatches(user: User) {
       stage: match.stage,
       filled: match.filled,
 
-      disabled: match.date < getNextTenMinutesDate(),
+      disabled: groupSubmissionsEnded({
+        prode: {
+          groupSubmissionsEnd: prode.groupSubmissionsEnd,
+        },
+      }),
 
       goalsLeft: match.goalsLeft,
       userGoalsLeft: match.userResults[0]?.goalsLeft ?? null,
@@ -466,66 +515,6 @@ export async function getUserTemplateGroupMatches(user: User) {
     }));
 }
 
-export const computeGroupMatchPoints = (
-  room: ProdeRoom,
-  groupMatches: {
-    matchId: string;
-    goalsLeft: number;
-    goalsRight: number;
-    match: Match;
-  }[]
-) => {
-  return groupMatches.reduce((result, userMatch) => {
-    const match = userMatch.match;
-    if (!userMatch) return result;
-    if (
-      userMatch.goalsLeft === null ||
-      match.goalsLeft === null ||
-      userMatch.goalsRight === null ||
-      match.goalsRight === null
-    )
-      return result;
-
-    if (
-      userMatch.goalsLeft === match.goalsLeft &&
-      userMatch.goalsRight === match.goalsRight
-    )
-      return result + room.pointsGoals;
-    else if (
-      match.goalsLeft === match.goalsRight &&
-      userMatch.goalsLeft === userMatch.goalsRight
-    )
-      return result + room.pointsWinner;
-    else if (
-      (match.goalsLeft > match.goalsRight &&
-        userMatch.goalsLeft > userMatch.goalsRight) ||
-      (match.goalsLeft < match.goalsRight &&
-        userMatch.goalsLeft < userMatch.goalsRight)
-    )
-      return result + room.pointsWinner;
-
-    return result;
-  }, 0);
-};
-
-export const computeFinalMatchPoints = (
-  room: ProdeRoom,
-  finalMatches: {
-    goalsLeft: number;
-    goalsRight: number;
-    matchId: string;
-    match: Match;
-    countryLeftId: string;
-    countryRightId: string;
-    penaltisLeft?: number | null;
-    penaltisRight?: number | null;
-  }[]
-) => {
-  return finalMatches.reduce((result, userMatch) => {
-    if (!userMatch) return result;
-    return result + finalMatchPoints(room, userMatch);
-  }, 0);
-};
 
 interface Rank
   extends Pick<User, "id" | "name" | "image" | "email" | "prodePublic"> {
@@ -540,6 +529,11 @@ interface Rank
   GROUP_F: number;
   GROUP_G: number;
   GROUP_H: number;
+  GROUP_I: number;
+  GROUP_J: number;
+  GROUP_K: number;
+  GROUP_L: number;
+  FINALS_16: number;
   FINALS_8: number;
   FINALS_4: number;
   FINALS_2: number;
@@ -555,7 +549,7 @@ export async function getRanking(
     offset: page * pageLength,
     limit: pageLength,
   });
-  const data: Rank[] = await prisma.$queryRawUnsafe(query);
+  const data: Rank[] = await prisma.$queryRaw(query);
 
   return data.map((row) => {
     return {
@@ -585,7 +579,7 @@ export async function getFullRanking(
     offset: page * pageLength,
     limit: pageLength,
   });
-  const data: Rank[] = await prisma.$queryRawUnsafe(query);
+  const data: Rank[] = await prisma.$queryRaw(query);
 
   return data.map((row) => {
     return {
@@ -608,7 +602,9 @@ export async function getFullRanking(
         "GROUP_I",
         "GROUP_J",
         "GROUP_K",
-        "GROUP_L",        "FINALS_8",
+        "GROUP_L",
+        "FINALS_16",
+        "FINALS_8",
         "FINALS_4",
         "FINALS_2",
         "FINAL",
@@ -626,7 +622,7 @@ export async function getFullRanking(
 
 export async function getUserRanking(room: ProdeRoom, userProde: UserProde) {
   const query = getUserRankingQuery(room, userProde.id);
-  const data: Rank[] = await prisma.$queryRawUnsafe(query);
+  const data: Rank[] = await prisma.$queryRaw(query);
 
   return data.map((row) => {
     return {
@@ -652,7 +648,7 @@ export async function getUserFullRanking(
   userProde: UserProde
 ) {
   const query = getUserFullRankingQuery(room, userProde.id);
-  const data: Rank[] = await prisma.$queryRawUnsafe(query);
+  const data: Rank[] = await prisma.$queryRaw(query);
 
   return data.map((row) => {
     return {
@@ -675,7 +671,9 @@ export async function getUserFullRanking(
         "GROUP_I",
         "GROUP_J",
         "GROUP_K",
-        "GROUP_L",        "FINALS_8",
+        "GROUP_L",
+        "FINALS_16",
+        "FINALS_8",
         "FINALS_4",
         "FINALS_2",
         "FINAL",
@@ -691,168 +689,6 @@ export async function getUserFullRanking(
   })?.[0] as Rank;
 }
 
-export function finalMatchPoints(
-  room: ProdeRoom,
-  userMatch: {
-    goalsLeft: number;
-    goalsRight: number;
-    matchId: string;
-    match: Match;
-    countryLeftId: string;
-    countryRightId: string;
-    penaltisLeft?: number | null;
-    penaltisRight?: number | null;
-  }
-) {
-  const { match } = userMatch;
-
-  if (
-    (!match.goalsLeft && match.goalsLeft !== 0) ||
-    (!match.goalsRight && match.goalsRight !== 0)
-  )
-    //no esta completo
-    return 0;
-
-  if (
-    match.goalsLeft === match.goalsRight &&
-    match.goalsLeft === userMatch.goalsLeft &&
-    match.goalsRight === userMatch.goalsRight &&
-    match.penaltisLeft === userMatch.penaltisLeft &&
-    match.penaltisRight === userMatch.penaltisRight
-  )
-    //empate y resultado perfecto
-    return room.pointsPenal;
-
-  if (
-    match.goalsLeft !== match.goalsRight &&
-    match.goalsLeft === userMatch.goalsLeft &&
-    match.goalsRight === userMatch.goalsRight
-  )
-    //no es empate pero resultado perfecto
-    return room.pointsGoals;
-
-  if (match.goalsLeft > match.goalsRight) {
-    //gana left en goles
-    if (userMatch.goalsLeft > userMatch.goalsRight) {
-      //predice que gana left
-      return room.pointsWinner;
-    }
-
-    if (
-      userMatch.goalsLeft === userMatch.goalsRight &&
-      (userMatch.penaltisLeft || userMatch.penaltisLeft === 0) &&
-      (userMatch.penaltisRight || userMatch.penaltisRight === 0)
-    ) {
-      //predice que empatan
-      if (userMatch.penaltisLeft > userMatch.penaltisRight) {
-        //predice que gana left en penales
-        return room.pointsWinner;
-      }
-    }
-
-    return 0;
-  }
-
-  if (match.goalsLeft < match.goalsRight) {
-    //gana right en goles
-    if (userMatch.goalsLeft < userMatch.goalsRight) {
-      //predice que gana right
-      return room.pointsWinner;
-    }
-
-    if (
-      userMatch.goalsLeft === userMatch.goalsRight &&
-      (userMatch.penaltisLeft || userMatch.penaltisLeft === 0) &&
-      (userMatch.penaltisRight || userMatch.penaltisRight === 0)
-    ) {
-      //predice que empatan
-      if (userMatch.penaltisLeft < userMatch.penaltisRight) {
-        //predice que gana right en penales
-        return room.pointsWinner;
-      }
-    }
-
-    return 0;
-  }
-
-  if (
-    match.goalsLeft === match.goalsRight &&
-    (match.penaltisLeft || match.penaltisLeft === 0) &&
-    (match.penaltisRight || match.penaltisRight === 0)
-  ) {
-    //empate
-
-    if (match.penaltisLeft > match.penaltisRight) {
-      //gana left en penales
-
-      if (
-        userMatch.goalsLeft === userMatch.goalsRight &&
-        (userMatch.penaltisLeft || userMatch.penaltisLeft === 0) &&
-        (userMatch.penaltisRight || userMatch.penaltisRight === 0)
-      ) {
-        //predice que empatan
-        if (userMatch.penaltisLeft > userMatch.penaltisRight) {
-          //predice que gana left en penales
-
-          if (
-            userMatch.goalsLeft === match.goalsLeft &&
-            userMatch.goalsRight === match.goalsRight
-          ) {
-            //predice el ganador sin penales exactos
-            //pero los goles estan ok
-            return room.pointsGoals;
-          }
-
-          return room.pointsWinner;
-        }
-      }
-
-      if (userMatch.goalsLeft > userMatch.goalsRight) {
-        //predice que gana left
-        return room.pointsWinner;
-      }
-
-      return 0;
-    }
-
-    if (match.penaltisLeft < match.penaltisRight) {
-      //gana right en paneles
-
-      if (
-        userMatch.goalsLeft === userMatch.goalsRight &&
-        (userMatch.penaltisLeft || userMatch.penaltisLeft === 0) &&
-        (userMatch.penaltisRight || userMatch.penaltisRight === 0)
-      ) {
-        //predice que empatan
-        if (userMatch.penaltisLeft < userMatch.penaltisRight) {
-          //predice que gana right en penales
-
-          if (
-            userMatch.goalsLeft === match.goalsLeft &&
-            userMatch.goalsRight === match.goalsRight
-          ) {
-            //predice el ganador sin penales exactos
-            //pero los goles estan ok
-            return room.pointsGoals;
-          }
-
-          return room.pointsWinner;
-        }
-      }
-
-      if (userMatch.goalsLeft < userMatch.goalsRight) {
-        //predice que gana right
-        return room.pointsWinner;
-      }
-
-      return 0;
-    }
-
-    return 0;
-  }
-
-  return 0;
-}
 
 export async function syncronizeTemplate(room: ProdeRoom, user: User) {
   const currentProdeMatches = await prisma.prodeUserGroupMatch.findMany({
@@ -996,13 +832,15 @@ export async function getCountries() {
   return prisma.country.findMany({});
 }
 
-export async function getAllowedMatchesToModify(ids: string[]) {
+export async function getAllowedMatchesToModify(
+  ids: string[],
+  submissionsEnd: Date
+) {
+  if (isDeadlineReached(submissionsEnd)) return [];
+
   return (
     await prisma.match.findMany({
       where: {
-        date: {
-          gte: getNextTenMinutesDate(),
-        },
         id: {
           in: ids,
         },

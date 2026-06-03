@@ -1,4 +1,4 @@
-import { ProdeRoom } from "@prisma/client";
+import { ProdeRoom } from '@/generated/prisma';
 import React from "react";
 import { useLocalizedText } from "../../../locale";
 import { className } from "../../../utils/classname";
@@ -26,7 +26,7 @@ export function FinalsResultsWarning(
       <div className={styles.indicator}>
         <div className={className(styles.indicatorBox, styles.primary)}>
           <div className={className(styles.indicatorBox, styles.secondary)} />+
-          {props.roomConfig.pointsGoals + props.roomConfig.pointsWinner}
+          {props.roomConfig.pointsGoals}
         </div>
         {i18n.finalsExactGoals} + {i18n.finalsCorrectResult}
       </div>
