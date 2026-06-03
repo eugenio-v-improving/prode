@@ -65,9 +65,10 @@ model VerificationToken {
 }
 
 model Country {
-  id   String @id @default(cuid())
-  code String
-  name String @unique
+  id         String @id @default(cuid())
+  code       String
+  name       String @unique
+  externalId Int?   @unique
 
   matchesLeft        Match[]                @relation("CountryLeft")
   matchesRight       Match[]                @relation("CountryRight")
@@ -152,6 +153,7 @@ model Match {
   penaltisLeft  Int?
   penaltisRight Int?
   filled        Boolean  @default(false)
+  apiFixtureId  Int?     @unique
 
   countryLeftId String?
   countryLeft   Country? @relation("CountryLeft", fields: [countryLeftId], references: [id])

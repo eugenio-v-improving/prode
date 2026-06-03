@@ -1,0 +1,45 @@
+name: Sync match results
+
+on:
+  schedule:
+    # Two match windows based on the actual WC 2026 group stage schedule (all times UTC):
+    #
+    #   Window A — 12:00–01:00 UTC: covers 9am–8pm Argentina kickoffs (all daytime/evening matches)
+    #   Window B — 03:00–05:00 UTC: covers midnight Argentina kickoffs (AUS/TUR, IRN/NZL, AUT/JOR)
+    #   Dead zone — 05:00–12:00 UTC: no matches, no polling
+    #
+    # Budget: Window A = 52 calls, Window B = 12 calls → 64 calls/day max (100/day limit)
+    # Sync is idempotent: no-op if the score hasn't changed.
+    - cron: "*/15 12-23 * * *"   # Window A part 1: 12:00–23:59 UTC (48 calls/day)
+    - cron: "*/15 0-1 * * *"     # Window A part 2: 00:00–01:59 UTC  (8 calls/day)
+    - cron: "*/15 3-5 * * *"     # Window B:        03:00–05:59 UTC  (12 calls/day)
+  workflow_dispatch:
+    inputs:
+      date:
+        description: "Date to sync (YYYY-MM-DD). Leave blank to fetch all finished fixtures."
+        required: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call sync endpoint
+        run: |
+          DATE_PARAM=""
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            DATE_PARAM="?date=${{ github.event.inputs.date }}"
+          fi
+
+          RESPONSE=$(curl -s -o /tmp/sync-response.json -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/cron/sync-matches${DATE_PARAM}")
+
+          echo "HTTP status: $RESPONSE"
+          cat /tmp/sync-response.json
+
+          if [ "$RESPONSE" != "200" ] && [ "$RESPONSE" != "207" ]; then
+            echo "Sync failed with status $RESPONSE"
+            exit 1
+          fi
