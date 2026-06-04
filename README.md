@@ -8,32 +8,74 @@ Prode is a Next.js App Router project for World Cup prediction rooms. It uses Pr
 - Docker (recommended for local Postgres)
 - npm
 
-## Local Setup
+## Quick Start (From Scratch)
 
-1. Install dependencies:
+Follow these steps to set up the project from zero:
 
-```bash
-npm install
-```
-
-2. Create `.env` from `.env.example` and fill at least:
+### 1. Start the databases
 
 ```bash
-GOOGLE_ID=
-GOOGLE_SECRET=
-AUTH_SECRET=
-DATABASE_URL=postgresql://leniolabs:leniolabs@localhost:5434/prode
+docker compose up -d
 ```
 
-Generate `AUTH_SECRET` with:
+This starts both the main dev database (port 5432) and test database (port 5433).
+
+### 2. Create your `.env` file
+
+Copy the example and configure it:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set at minimum:
+
+```bash
+DATABASE_URL=postgresql://leniolabs:leniolabs@localhost:5432/prode
+AUTH_SECRET=<generate-with-command-below>
+GOOGLE_ID=<your-google-oauth-client-id>
+GOOGLE_SECRET=<your-google-oauth-client-secret>
+```
+
+Generate `AUTH_SECRET`:
 
 ```bash
 openssl rand -hex 32
 ```
 
-3. Start a local Postgres instance.
+### 3. Install dependencies
 
-Option A (recommended when port 5432 is already used):
+```bash
+npm install
+```
+
+### 4. Apply database migrations
+
+```bash
+npx prisma migrate deploy
+```
+
+### 5. Seed WC 2026 data
+
+```bash
+npx prisma db seed
+```
+
+This creates 48 countries, 72 group-stage matches, and 32 knockout matches.
+
+### 6. Start the dev server
+
+```bash
+npm run dev
+```
+
+The app will be available at **http://localhost:3000**
+
+---
+
+## Alternative Database Setup
+
+If port 5432 is already in use, you can run a standalone container on a different port:
 
 ```bash
 docker run -d --name prode-db-local \
@@ -43,36 +85,19 @@ docker run -d --name prode-db-local \
 	-p 5434:5432 postgres:15.1
 ```
 
-Option B (project compose service on 5432):
+Then update your `.env`:
 
 ```bash
-docker compose up -d prode-db
+DATABASE_URL=postgresql://leniolabs:leniolabs@localhost:5434/prode
 ```
 
-If you use option B, set `DATABASE_URL` to port `5432`.
+## Reset Database (Clean Start)
 
-4. Apply migrations:
-
-```bash
-npx prisma migrate deploy
-```
-
-If this is a local dev DB and you need a clean start:
+If you need to wipe and recreate the database:
 
 ```bash
 npx prisma migrate reset --force --skip-seed
-```
-
-5. Seed core WC 2026 data (countries + fixture + bracket):
-
-```bash
 npx prisma db seed
-```
-
-6. Run the app:
-
-```bash
-npm run dev
 ```
 
 ## Auth Notes
@@ -98,8 +123,8 @@ If the app runs on another port (for example `3001`), add that callback URI too.
 Useful checks:
 
 ```bash
-PGPASSWORD=leniolabs psql "postgresql://leniolabs:leniolabs@localhost:5434/prode" -c "\dt"
-PGPASSWORD=leniolabs psql "postgresql://leniolabs:leniolabs@localhost:5434/prode" -c "show search_path;"
+PGPASSWORD=leniolabs psql "postgresql://leniolabs:leniolabs@localhost:5432/prode" -c "\dt"
+PGPASSWORD=leniolabs psql "postgresql://leniolabs:leniolabs@localhost:5432/prode" -c "show search_path;"
 ```
 
 If a DB client (for example DBeaver) shows empty tables but `psql` does not:
