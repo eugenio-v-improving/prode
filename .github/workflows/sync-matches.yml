@@ -1,18 +1,21 @@
 name: Sync match results
 
 on:
-  schedule:
-    # Two match windows based on the actual WC 2026 group stage schedule (all times UTC):
-    #
-    #   Window A — 12:00–01:00 UTC: covers 9am–8pm Argentina kickoffs (all daytime/evening matches)
-    #   Window B — 03:00–05:00 UTC: covers midnight Argentina kickoffs (AUS/TUR, IRN/NZL, AUT/JOR)
-    #   Dead zone — 05:00–12:00 UTC: no matches, no polling
-    #
-    # Budget: Window A = 52 calls, Window B = 12 calls → 64 calls/day max (100/day limit)
-    # Sync is idempotent: no-op if the score hasn't changed.
-    - cron: "*/15 12-23 * * *"   # Window A part 1: 12:00–23:59 UTC (48 calls/day)
-    - cron: "*/15 0-1 * * *"     # Window A part 2: 00:00–01:59 UTC  (8 calls/day)
-    - cron: "*/15 3-5 * * *"     # Window B:        03:00–05:59 UTC  (12 calls/day)
+  # Automatic schedule is DISABLED: the app is not deployed, so there is no
+  # endpoint (secrets.APP_URL) for the runner to call. Re-enable by uncommenting
+  # the block below once the service is deployed.
+  #
+  # Note: ESPN is keyless and unlimited, so the old API quota no longer applies.
+  # GitHub Actions enforces a 5-minute minimum cron interval and runs are
+  # best-effort (often delayed several minutes), so */5 is the practical floor.
+  #
+  # schedule:
+  #   # WC 2026 match windows (all times UTC):
+  #   #   Window A — 12:00–01:00 UTC: daytime/evening kickoffs
+  #   #   Window B — 03:00–05:00 UTC: midnight Argentina kickoffs
+  #   - cron: "*/5 12-23 * * *"   # Window A part 1: 12:00–23:59 UTC
+  #   - cron: "*/5 0-1 * * *"     # Window A part 2: 00:00–01:59 UTC
+  #   - cron: "*/5 3-5 * * *"     # Window B:        03:00–05:59 UTC
   workflow_dispatch:
     inputs:
       date:
