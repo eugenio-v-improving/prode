@@ -30,6 +30,7 @@ import styles from "./new-prode.module.scss";
 interface NewProdeData {
   userRanking?: Pick<User, "id" | "name" | "image" | "email" | "prodePublic" | "background" | "dark">;
   registeredProdes: number;
+  prodeEnd?: string | null;
 }
 
 type FormType = {
@@ -117,6 +118,7 @@ export default function NewProdePage() {
         title={i18n.headerTitle}
         deadlinePre={i18n.headerWelcomeLine1}
         deadlinePost={i18n.headerWelcomeLine2}
+        prodeEnd={props?.prodeEnd}
       >
         <Button variant="secondary" href="/rooms">
           {i18n.buttonLabelGoToMyProde}
