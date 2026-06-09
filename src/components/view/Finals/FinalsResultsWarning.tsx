@@ -24,9 +24,9 @@ export function FinalsResultsWarning(
       </div>
       <div className={styles.indicator}>
         <div className={className(styles.indicatorBox, styles.primary)}>
-          <div className={className(styles.indicatorBox, styles.secondary)} />+
-          {props.roomConfig.pointsGoals}
+          +{props.roomConfig.pointsGoals}
         </div>
+        <div className={className(styles.indicatorBox, styles.secondary)} />
         {i18n.finalsExactGoals} + {i18n.finalsCorrectResult}
       </div>
       <div className={styles.indicator}>
