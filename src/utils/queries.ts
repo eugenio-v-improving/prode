@@ -49,14 +49,6 @@ type ProdeRoomWithDeadlines = ProdeRoom & {
   };
 };
 
-export function groupSubmissionsEnded(room: {
-  prode: {
-    groupSubmissionsEnd: Date;
-  };
-}) {
-  return isDeadlineReached(room.prode.groupSubmissionsEnd);
-}
-
 export function finalsSubmissionsEnded(room: {
   prode: {
     finalsSubmissionsEnd: Date;

@@ -18,12 +18,6 @@ function applyTimezoneOffset(date: Date, timezone?: string) {
   return newDate;
 }
 
-export function getNextTenMinutesDate() {
-  const now = new Date();
-  now.setMinutes(now.getMinutes() + 10);
-  return now;
-}
-
 /**
  * The lock time of the matchday ("fecha") a group match belongs to: the
  * greatest deadline that is <= the match date. `deadlines` must be ascending
