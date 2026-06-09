@@ -1,6 +1,8 @@
 import { Match, ProdeRoom, User, UserProde } from "@/generated/prisma";
 import { prisma } from "../lib";
 import { matchCountriesMatchStatus, matchFinalResultStatus } from "./points";
+import { isGroupMatchLocked } from "./date";
+import { GROUP_MATCHDAY_DEADLINES } from "@/config/matchdays";
 export {
   computeGroupMatchPoints,
   computeFinalMatchPoints,
@@ -446,11 +448,7 @@ export async function getUserGroupMatches(
       stage: match.stage,
       filled: match.filled,
 
-      disabled: groupSubmissionsEnded({
-        prode: {
-          groupSubmissionsEnd: room.prode.groupSubmissionsEnd,
-        },
-      }),
+      disabled: isGroupMatchLocked(match.date, GROUP_MATCHDAY_DEADLINES),
 
       goalsLeft: match.goalsLeft,
       userGoalsLeft: match.userResults[0]?.goalsLeft ?? null,
@@ -507,11 +505,7 @@ export async function getUserTemplateGroupMatches(user: User) {
       stage: match.stage,
       filled: match.filled,
 
-      disabled: groupSubmissionsEnded({
-        prode: {
-          groupSubmissionsEnd: prode.groupSubmissionsEnd,
-        },
-      }),
+      disabled: isGroupMatchLocked(match.date, GROUP_MATCHDAY_DEADLINES),
 
       goalsLeft: match.goalsLeft,
       userGoalsLeft: match.userResults[0]?.goalsLeft ?? null,
@@ -858,6 +852,32 @@ export async function getAllowedMatchesToModify(
       },
     })
   ).map((match) => match.id);
+}
+
+/**
+ * Group-stage variant of getAllowedMatchesToModify. Locks per matchday: a match
+ * is editable only while its fecha has not kicked off (see config/matchdays.ts).
+ * Unlike the phase-wide finals path, this stays open across fechas so players
+ * complete the tournament fecha by fecha.
+ */
+export async function getAllowedGroupMatchesToModify(ids: string[]) {
+  const now = new Date();
+
+  return (
+    await prisma.match.findMany({
+      where: {
+        id: {
+          in: ids,
+        },
+      },
+      select: {
+        id: true,
+        date: true,
+      },
+    })
+  )
+    .filter((match) => !isGroupMatchLocked(match.date, GROUP_MATCHDAY_DEADLINES, now))
+    .map((match) => match.id);
 }
 
 export async function deleteUserProde(userProdeId: string) {
