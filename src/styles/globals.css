@@ -1,3 +1,219 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — canonical mirror of src/styles/_tokens.scss.
+ * Mapped into Tailwind's theme so every token becomes a utility class.
+ * DO NOT change any value here without changing _tokens.scss (and vice versa)
+ * until Migration H fully retires the SCSS tokens.
+ */
+@theme {
+  /* Brand colors → bg-*, text-*, border-* */
+  --color-brand-blue: #005596;
+  --color-brand-light-blue: #4597D3;
+  --color-brand-green: #5BC2A7;
+  --color-accent-yellow: #FFCA30;
+  --color-accent-cta: #F5BB41;
+  --color-dark-navy: #00192C;
+  --color-neutral-gray: #A7A8A9;
+
+  /* Surface / component colors */
+  --color-card-body: #ffffff;
+  --color-table-header-bg: #E8F4F1;
+  --color-section-title-bg: #E8F4F1;
+  --color-warning-bg: #f6f5f5;
+  --color-container-header-secondary: #343f52;
+  --color-modal-overlay: rgba(0, 25, 44, 0.5);
+  --color-form-legend: rgba(0, 25, 44, 0.6);
+
+  /* Gameplay semantics — DO NOT CHANGE these values, ever */
+  --color-correct: #309e3a;
+  --color-winner: #0093dd;
+  --color-wrong: #f9aa51;
+
+  /* Radii → rounded-* */
+  --radius-card: 8px;
+  --radius-input: 8px;
+  --radius-button: 8px;
+
+  /* Shadow → shadow-card */
+  --shadow-card: 0px 9px 28px rgba(0, 0, 0, 0.05);
+
+  /* Font → font-sans (Poppins via next/font CSS var) */
+  --font-sans: var(--font-poppins), sans-serif;
+}
+
+/*
+ * Gradient / translucent backgrounds — cannot be single-color tokens.
+ * Tailwind v4 custom utilities give conversion agents clean class names.
+ */
+@utility bg-app-gradient {
+  background-image: linear-gradient(180deg, #005596 0%, #4597D3 100%);
+}
+
+@utility bg-footer-gradient {
+  background-image: linear-gradient(90deg, #5BC2A7 0%, #4597D3 100%);
+}
+
+@utility bg-header-translucent {
+  background-color: #005596CC;
+}
+
+/*
+ * Groups page named-area grid (Migration H, Wave D).
+ * grid-template-areas with named areas + a responsive breakpoint cannot be
+ * expressed cleanly as inline Tailwind utilities, so the full template lives
+ * here. The minmax(0, ...) tracks (NOT plain 1fr) are part of the overflow fix
+ * that keeps the page within 100vw — do not replace with 1fr.
+ */
+@utility groups-grid {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: max-content max-content max-content;
+  /* Mobile: surface the Today's/Upcoming Matches + ranking sidebar BEFORE the
+     group cards so the actionable matches aren't buried below all 12 groups. */
+  grid-template-areas: "matches-header" "sidebar" "matches";
+
+  @media screen and (min-width: 1300px) {
+    grid-template-columns: minmax(0, 1fr) minmax(420px, 440px);
+    align-items: start;
+    grid-template-areas: "matches-header sidebar" "matches sidebar";
+  }
+}
+
+@utility groups-grid-admin {
+  display: grid;
+  width: 100%;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: max-content max-content max-content;
+  grid-template-areas: "matches-header" "matches";
+}
+
+/*
+ * Finals page named-area grid (Migration H, Wave D).
+ * Same named-area + breakpoint constraint as groups-grid. Admin renders a
+ * single matches column.
+ */
+@utility finals-grid {
+  display: grid;
+  margin-bottom: 12px;
+  width: 100%;
+  gap: 0px 12px;
+  grid-template-columns: 1fr;
+  grid-template-rows: max-content max-content max-content max-content;
+  grid-template-areas: "matches-header" "following" "matches" "ranking";
+
+  @media screen and (min-width: 1300px) {
+    margin-right: 12px;
+    grid-template-columns: 70% 1fr;
+    grid-template-areas: "matches-header following" "matches following" "matches ranking" "matches -";
+  }
+}
+
+@utility finals-grid-admin {
+  display: grid;
+  margin-bottom: 12px;
+  width: 100%;
+  gap: 0px 12px;
+  grid-template-rows: max-content max-content max-content max-content;
+  grid-template-columns: 1fr;
+  grid-template-areas: "matches-header" "matches";
+}
+
+/*
+ * Animation keyframes used by LoadingOverlay (Migration H).
+ * spin-ease: same duration/iteration as Tailwind's animate-spin but with
+ * ease-in-out timing to match the original SCSS behaviour.
+ */
+@keyframes spin-ease {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@utility animate-spin-ease {
+  animation: spin-ease 1s ease-in-out infinite;
+}
+
+/*
+ * Layout sibling rule: Container that directly follows the layout Header gets top margin.
+ * Originally expressed as `header + .container` in Container.module.scss.
+ * Scoped via data attribute to avoid matching other header+section pairs.
+ */
+[data-layout-header] + section {
+  margin-top: 32px;
+}
+
+/*
+ * DailyMatches timer strip — data-attribute–driven styles that cannot be
+ * expressed as inline Tailwind utilities.  Used by DailyMatchInput and
+ * DailyMatchFinalInput via the `daily-match-timer` utility class.
+ */
+@utility daily-match-timer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 24px;
+  background: #1f274030;
+  display: none;
+  align-items: center;
+  place-content: center;
+
+  & svg {
+    display: none;
+    width: 18px;
+  }
+
+  &[data-timer=""] svg {
+    display: block;
+  }
+
+  &[data-show="true"] {
+    display: flex;
+  }
+
+  &::after {
+    content: attr(data-timer);
+    font-size: 12px;
+    height: 12px;
+    color: #767676;
+    font-weight: bold;
+    position: relative;
+  }
+
+  &[data-status="success"] { background: #69b29a30; }
+  &[data-status="danger"]  { background: #fa375730; }
+  &[data-status="warning"] { background: #ffca3030; }
+}
+
+/*
+ * DailyMatches penaltis divider — only visible on mobile (≤1024px).
+ * The divider itself is hidden on desktop; on mobile it becomes a vertical
+ * rule and the adjacent penalty input switches to full size.
+ */
+@utility penaltis-divider {
+  display: none;
+
+  @media screen and (max-width: 1024px) {
+    display: block;
+    position: absolute;
+    left: 50%;
+    height: 60%;
+    margin-top: 10%;
+    border-left: 1px solid #767676;
+
+    & + input {
+      font-size: 20px;
+      border: none;
+      width: 40px;
+      height: 40px;
+    }
+  }
+}
+
+/* Global resets (carried over unchanged) */
 html,
 body {
   padding: 0;

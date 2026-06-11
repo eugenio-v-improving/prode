@@ -4,6 +4,8 @@ import Image from "next/image";
 import { ProdeRoom, User } from "@/generated/prisma";
 import { BrandLogo } from "@/components/common/BrandLogo";
 import { WelcomeBar } from "@/components/common/Header/WelcomeBar";
+import { HeaderMenu } from "@/components/common/Header/HeaderMenu";
+import { LocaleSelect } from "@/components/common/LocaleSelect";
 import { Layout, Footer } from "@/layout";
 import { useRequireSession } from "@/hooks";
 import { Button } from "@/components/common/Button";
@@ -14,8 +16,24 @@ import { EditRoomModal } from "@/components/view/EditRoomModal";
 import { Meta } from "@/components/common/Meta";
 import { useLocalizedText } from "@/locale";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import styles from "./rooms.module.scss";
 import { InfoIcon } from "@/components/common/Icons";
+
+const pageContentClass =
+  "flex-1 w-[min(100%,1080px)] mx-auto mt-[clamp(24px,5vh,56px)] mb-[clamp(24px,6vh,64px)] px-6 relative z-[1] max-[900px]:px-[18px] max-[640px]:px-3 max-[640px]:min-h-[unset]";
+const ctaRowClass =
+  "flex flex-col items-center pt-[clamp(20px,4vh,54px)] pb-[clamp(18px,3vh,34px)] gap-[18px] relative z-[1] max-[900px]:pt-[26px] max-[640px]:gap-[14px]";
+const ctaButtonClass =
+  "!min-w-[226px] !min-h-[54px] justify-center !px-7 !py-3 !text-[20px] !text-dark-navy !rounded-[10px] !border-0 shadow-[0_10px_22px_rgba(0,0,0,0.12)] max-[640px]:!min-w-[210px] max-[640px]:!min-h-[50px]";
+const dividerClass =
+  "flex items-center w-full max-w-[552px] text-white/[0.92] text-[18px] font-bold tracking-[0.12em] before:content-[''] before:flex-1 before:border-t before:border-white/[0.78] before:mx-[22px] after:content-[''] after:flex-1 after:border-t after:border-white/[0.78] after:mx-[22px] max-[640px]:max-w-full max-[640px]:text-[15px] max-[640px]:before:mx-3 max-[640px]:after:mx-3";
+const roomsPanelClass =
+  "w-[min(100%,980px)] mx-auto rounded-card overflow-hidden border-2 border-[rgba(91,194,167,0.95)] bg-[rgba(255,255,255,0.98)] shadow-[0_14px_36px_rgba(0,0,0,0.08)]";
+const roomsPanelHeaderClass =
+  "bg-brand-green text-white text-center pt-[18px] px-6 pb-4 [&_h1]:m-0 [&_h1]:text-[25px] [&_h1]:font-bold [&_h1]:leading-[1.15] max-[640px]:pt-4 max-[640px]:px-5 max-[640px]:pb-[14px]";
+const roomsPanelBodyClass =
+  "px-3 pt-4 pb-[18px] flex flex-col gap-3 [&_p]:text-[20px] [&_p]:text-black max-[640px]:p-2.5 max-[640px]:[&_p]:text-[14px]";
+const enterButtonClass =
+  "min-w-24 h-10 rounded-[9px] border-[1.5px] border-dark-navy bg-white text-dark-navy text-[20px] font-bold leading-none cursor-pointer transition duration-150 enabled:hover:bg-[#f1f3f5] enabled:hover:shadow-sm enabled:active:scale-[0.97] disabled:opacity-35 disabled:cursor-default max-[640px]:min-w-[76px] max-[640px]:h-9 max-[640px]:text-[17px] max-[640px]:px-2.5";
 
 type EditableRoom = Pick<
   ProdeRoom,
@@ -167,90 +185,146 @@ export default function RoomsPage() {
     return null;
 
   return (
-    <Layout dark className={styles.roomsLayout}>
+    <Layout dark className="relative overflow-hidden before:hidden">
       <Meta />
       <WelcomeBar
         title={i18n.headerTitle}
         deadlinePre={i18n.headerWelcomeLine1}
         deadlinePost={i18n.headerWelcomeLine2}
         prodeEnd={props?.prodeEnd}
-      />
-      <main className={styles.pageContent}>
-        <div className={styles.ctaRow}>
-          <Button href="/new-prode">{i18n.buttonLabelCreateRoom}</Button>
-          <span className={styles.divider}>○</span>
+      >
+        <div className="shrink-0 [&_div:has(>img)]:!h-[46px] [&_div:has(>img)]:!w-[46px] [&_div:has(>img)_img]:!h-[46px] [&_div:has(>img)_img]:!w-[46px] max-[640px]:[&_div:has(>img)]:!h-[40px] max-[640px]:[&_div:has(>img)]:!w-[40px] max-[640px]:[&_div:has(>img)_img]:!h-[40px] max-[640px]:[&_div:has(>img)_img]:!w-[40px]">
+          <HeaderMenu
+            compact
+            prodePublic={props?.userRanking?.prodePublic}
+            dark={props?.userRanking?.dark}
+            background={props?.userRanking?.background}
+          />
         </div>
-        <section
-          className={styles.roomsPanel}
-          aria-label={i18n.roomsProdeListTitle}
-        >
-          <header className={styles.roomsPanelHeader}>
+      </WelcomeBar>
+      <main className={pageContentClass}>
+        <div className={ctaRowClass}>
+          <Button href="/new-prode" className={ctaButtonClass}>
+            {i18n.buttonLabelCreateRoom}
+          </Button>
+          <span className={dividerClass}>○</span>
+        </div>
+        <section className={roomsPanelClass} aria-label={i18n.roomsProdeListTitle}>
+          <header className={roomsPanelHeaderClass}>
             <h1>{i18n.roomsProdeListTitle}</h1>
           </header>
-          <div className={styles.roomsPanelBody}>
-            <div className={styles.roomsWarning}>
-              <div style={{ width: "40px", height: "40px" }}>
+          <div className={roomsPanelBodyClass}>
+            <div className="flex items-start gap-2 !mt-[-12px] max-[640px]:!mt-0 max-[640px]:gap-1.5">
+              <div className="shrink-0 w-10 h-10 max-[640px]:w-[22px] max-[640px]:h-[22px] [&_svg]:!h-full [&_svg]:!w-full">
                 <InfoIcon />
               </div>
               <p>{i18n.roomsWarning}</p>
             </div>
-            {(props?.rooms || []).map((row, index) => {
-              const locked = Boolean(row.hasPassword && !row.open);
-              const label = row.alreadyJoin
-                ? i18n.roomsProdeListRedirectLabel
-                : i18n.roomsProdeListJoinLabel;
-
-              return (
-                <div
-                  key={row.id}
-                  className={styles.roomRow}
-                  data-testid={`room-row-${row.id}`}
-                  data-striped={index % 2 === 0}
-                  data-locked={locked}
-                >
-                  <div className={styles.roomName}>{row.name}</div>
-                  <div className={styles.roomPlayers}>
-                    <PlayersIcon />
-                    <span>{row.playerCount}</span>
-                  </div>
-                  <div className={styles.roomActions}>
-                    {locked && (
-                      <span className={styles.lockIcon}>
-                        <LockGlyph />
+            <div className="overflow-x-auto">
+              <table className="w-full table-fixed border-collapse">
+                <thead>
+                  <tr className="bg-dark-navy text-white text-[20px] [&>th]:px-4 [&>th]:py-2.5 [&>th]:font-bold [&>th]:whitespace-nowrap max-[640px]:text-[14px] max-[640px]:[&>th]:px-2">
+                    <th className="text-left rounded-tl-[8px]">
+                      {i18n.roomsProdeListColumnName}
+                    </th>
+                    <th className="text-center w-[120px] max-[640px]:w-[52px]">
+                      <span className="max-[640px]:hidden">
+                        {i18n.roomsProdeListColumnPlayers}
                       </span>
-                    )}
-                    {row.isCreator && row.room && (
-                      <button
-                        type="button"
-                        className={styles.editIcon}
-                        aria-label={i18n.headerMobileRoomSettings}
-                        data-testid={`room-edit-${row.id}`}
-                        onClick={() => setEditRoom(row.room)}
+                      <span
+                        className="inline-flex w-full justify-center min-[641px]:hidden [&_svg]:block"
+                        aria-label={i18n.roomsProdeListColumnPlayers}
                       >
-                        <Image
-                          src="/pencil-edit.png"
-                          alt=""
-                          width={22}
-                          height={22}
-                        />
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={styles.enterButton}
-                      data-testid={`room-enter-${row.id}`}
-                      disabled={locked}
-                      onClick={onRoomClick(
-                        row.id,
-                        row.open ? false : row.hasPassword,
-                      )}
-                    >
-                      {label}
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+                        <PlayersIcon />
+                      </span>
+                    </th>
+                    <th className="text-center w-[190px] max-[640px]:w-[88px]">
+                      <span className="max-[640px]:hidden">
+                        {i18n.roomsProdeListColumnMember}
+                      </span>
+                      <span className="inline min-[641px]:hidden">
+                        {i18n.locale === "es" ? "Miembro?" : "Member?"}
+                      </span>
+                    </th>
+                    <th className="w-[180px] max-[640px]:w-[104px] rounded-tr-[8px]" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {(props?.rooms || []).map((row, index) => {
+                    const locked = Boolean(row.hasPassword && !row.open);
+                    const label = row.alreadyJoin
+                      ? i18n.roomsProdeListRedirectLabel
+                      : i18n.roomsProdeListJoinLabel;
+
+                    return (
+                      <tr
+                        key={row.id}
+                        data-testid={`room-row-${row.id}`}
+                        data-striped={index % 2 === 0}
+                        data-locked={locked}
+                        className="text-dark-navy data-[striped=true]:bg-[rgba(0,0,0,0.09)] [&>td]:px-4 [&>td]:py-3 max-[640px]:[&>td]:px-2 max-[640px]:[&>td]:py-2.5"
+                      >
+                        <td className="text-[18px] overflow-hidden text-ellipsis whitespace-nowrap max-[640px]:text-[15px]">
+                          {row.name}
+                        </td>
+                        <td className="text-center">
+                          <span className="inline-flex items-center justify-center gap-2 text-[16px] [&_svg]:block max-[640px]:text-[14px]">
+                            <span className="max-[640px]:hidden">
+                              <PlayersIcon />
+                            </span>
+                            <span>{row.playerCount}</span>
+                          </span>
+                        </td>
+                        <td className="text-center text-[16px] max-[640px]:text-[14px]">
+                          {row.alreadyJoin
+                            ? i18n.locale === "es"
+                              ? "Sí"
+                              : "Yes"
+                            : "No"}
+                        </td>
+                        <td>
+                          <div className="flex items-center justify-end gap-3 max-[640px]:gap-1.5">
+                            {locked && (
+                              <span className="inline-flex items-center justify-center text-dark-navy">
+                                <LockGlyph />
+                              </span>
+                            )}
+                            {row.isCreator && row.room && (
+                              <button
+                                type="button"
+                                className="inline-flex shrink-0 items-center justify-center text-dark-navy border-none p-0 bg-transparent cursor-pointer hover:opacity-75"
+                                aria-label={i18n.headerMobileRoomSettings}
+                                data-testid={`room-edit-${row.id}`}
+                                onClick={() => setEditRoom(row.room)}
+                              >
+                                <Image
+                                  src="/pencil-edit.png"
+                                  alt=""
+                                  width={22}
+                                  height={22}
+                                />
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className={enterButtonClass}
+                              data-testid={`room-enter-${row.id}`}
+                              disabled={locked}
+                              onClick={onRoomClick(
+                                row.id,
+                                row.open ? false : row.hasPassword,
+                              )}
+                            >
+                              {label}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
         {passwordModalId && <PasswordModal onClose={handlePassword} />}
@@ -260,6 +334,7 @@ export default function RoomsPage() {
       </main>
       <Footer>
         <BrandLogo />
+        <LocaleSelect />
       </Footer>
     </Layout>
   );

@@ -3,11 +3,9 @@ import React from "react";
 import { Match, User } from "@/generated/prisma";
 import { BrandLogo } from "@/components/common/BrandLogo";
 import { Button } from "@/components/common/Button";
-import { CountryFlag } from "@/components/common/CountryFlag";
 import { DesktopHeader, MobileHeader } from "@/components/common/Header";
 import { RoomWelcomeBar } from "@/components/common/Header";
 import { MatchInput } from "@/components/common/MatchInput";
-import { Modal } from "@/components/common/Modal";
 import {
   Layout,
   Footer,
@@ -16,9 +14,8 @@ import {
   ContainerHeader,
   CardContent,
 } from "@/layout";
-import { useCountries, useRequireSession } from "@/hooks";
+import { useRequireSession } from "@/hooks";
 import { useInterval } from "@/hooks/useInterval";
-import commonStyles from "@/styles/CommonStyles.module.scss";
 import axios from "axios";
 import {
   CardsContainer,
@@ -35,7 +32,14 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { isGroupMatchLocked, groupMatchLockTime } from "@/utils/date";
 import { GROUP_MATCHDAY_DEADLINES } from "@/config/matchdays";
-import styles from "./page.module.scss";
+
+const stageHeaderClass =
+  "mb-[18px] [&>:first-child]:bg-brand-green [&>:first-child]:text-white [&>:first-child]:rounded-card [&>:first-child]:text-[25px] [&>:first-child]:font-bold [&>:first-child]:leading-[1.15] [&>:first-child]:pt-[11px] [&>:first-child]:px-5 [&>:first-child]:pb-[13px] [&>:first-child]:normal-case";
+const sectionCardClass =
+  "[&>:first-child]:bg-brand-green [&>:first-child]:text-white [&>:first-child]:rounded-t-[8px] [&>:first-child]:text-[25px] [&>:first-child]:font-bold [&>:first-child]:leading-[1.15] [&>:first-child]:min-h-[40px] [&>:first-child]:pt-[11px] [&>:first-child]:px-5 [&>:first-child]:pb-[13px] [&>:first-child]:normal-case";
+const groupCardClass =
+  "rounded-card overflow-hidden [&>:first-child]:bg-white [&>:first-child]:text-brand-blue [&>:first-child]:text-[16px] [&>:first-child]:font-bold [&>:first-child]:leading-none [&>:first-child]:min-h-[28px] [&>:first-child]:px-3 [&>:first-child]:pt-[7px] [&>:first-child]:pb-[5px] [&>:first-child]:uppercase";
+const matchPairBg = ["bg-[#f6f5f5]", "bg-[#ededed]", "bg-[#e1e1e1]"];
 
 type UIMatch = Pick<
   Match,
@@ -64,7 +68,6 @@ interface GroupsData {
 export default function GroupsPage() {
   const session = useRequireSession();
   const i18n = useLocalizedText();
-  const countries = useCountries();
   const timezone = React.useMemo(() => new Date().getTimezoneOffset().toString(), []);
 
   const { data: props } = useQuery<GroupsData>({ queryKey: ["groups-page-data", timezone], queryFn: () => fetch(`/api/groups-page-data?timezone=${timezone}`).then((r) => r.json()), enabled: session.status === "authenticated" });
@@ -72,12 +75,8 @@ export default function GroupsPage() {
   const [now, setNow] = React.useState(() => Date.now());
   useInterval(() => setNow(Date.now()), 60000);
   const [updating, setUpdating] = React.useState(false);
-  const [savingResult, setSavingResult] = React.useState(false);
   const [originalMatches, setOriginalMatches] = React.useState<UIMatch[]>([]);
   const [matches, setMatches] = React.useState<UIMatch[]>([]);
-  const [editingMatchId, setEditingMatchId] = React.useState<string | null>(null);
-  const [adminGoalsLeft, setAdminGoalsLeft] = React.useState("");
-  const [adminGoalsRight, setAdminGoalsRight] = React.useState("");
 
   React.useEffect(() => {
     if (props?.matches) {
@@ -107,73 +106,6 @@ export default function GroupsPage() {
     },
     []
   );
-
-  const editingMatch = React.useMemo(() => {
-    return editingMatchId
-      ? matches.find((match) => match.id === editingMatchId) ?? null
-      : null;
-  }, [editingMatchId, matches]);
-
-  const editingLeftCountry = React.useMemo(() => {
-    return countries?.find((country) => country.id === editingMatch?.countryLeftId);
-  }, [countries, editingMatch?.countryLeftId]);
-
-  const editingRightCountry = React.useMemo(() => {
-    return countries?.find((country) => country.id === editingMatch?.countryRightId);
-  }, [countries, editingMatch?.countryRightId]);
-
-  const openResultEditor = React.useCallback((match: UIMatch) => {
-    setEditingMatchId(match.id);
-    setAdminGoalsLeft(match.goalsLeft === null ? "" : String(match.goalsLeft));
-    setAdminGoalsRight(match.goalsRight === null ? "" : String(match.goalsRight));
-  }, []);
-
-  const closeResultEditor = React.useCallback(() => {
-    if (savingResult) return;
-    setEditingMatchId(null);
-    setAdminGoalsLeft("");
-    setAdminGoalsRight("");
-  }, [savingResult]);
-
-  const canSaveAdminResult = React.useMemo(() => {
-    return adminGoalsLeft !== "" && adminGoalsRight !== "";
-  }, [adminGoalsLeft, adminGoalsRight]);
-
-  const handleSaveResult = React.useCallback(() => {
-    if (!editingMatch) return;
-
-    const goalsLeft = Number(adminGoalsLeft);
-    const goalsRight = Number(adminGoalsRight);
-    if (!Number.isFinite(goalsLeft) || !Number.isFinite(goalsRight)) return;
-
-    setSavingResult(true);
-    axios
-      .post("/api/admin/groups", {
-        matches: [
-          {
-            id: editingMatch.id,
-            goalsLeft,
-            goalsRight,
-          },
-        ],
-      })
-      .then(() => {
-        setMatches((currentMatches) =>
-          currentMatches.map((match) =>
-            match.id === editingMatch.id
-              ? {
-                  ...match,
-                  goalsLeft,
-                  goalsRight,
-                  filled: true,
-                }
-              : match
-          )
-        );
-        closeResultEditor();
-      })
-      .finally(() => setSavingResult(false));
-  }, [adminGoalsLeft, adminGoalsRight, closeResultEditor, editingMatch]);
 
   const differentMatches = React.useMemo(() => {
     return matches.filter((match) => {
@@ -246,14 +178,14 @@ export default function GroupsPage() {
         <GroupsContainer full>
           <ContainerHeader
             sticky
-            className={styles.stageHeader}
+            className={stageHeaderClass}
             title={formattedGroupsTitle}
             gridArea="matches-header"
           >
             <Button
               variant="transparent"
               disabled={!hasEditableChanges}
-              className={commonStyles.marginLeftAuto}
+              className="ml-auto"
               onClick={handleSave}
             >
               {updating ? i18n.buttonLabelSaving : i18n.buttonLabelSave}
@@ -266,7 +198,7 @@ export default function GroupsPage() {
             ].map((group) => (
               <Card
                 key={group}
-                className={styles.groupCard}
+                className={groupCardClass}
                 title={i18n[group as keyof typeof i18n]}
               >
                 <CardContent>
@@ -275,7 +207,7 @@ export default function GroupsPage() {
                     .map((match, index) => (
                       <MatchInput
                         key={match.id}
-                        className={styles[`matchPair${Math.floor(index / 2)}` as keyof typeof styles]}
+                        className={matchPairBg[Math.floor(index / 2)]}
                         disabled={match.disabled || isGroupMatchLocked(new Date(match.date), GROUP_MATCHDAY_DEADLINES, new Date(now))}
                         date={new Date(match.date)}
                         countryLeftId={match.countryLeftId}
@@ -285,7 +217,6 @@ export default function GroupsPage() {
                         onChange={(leftGoals, rightGoals) =>
                           handleGoalsChange(match.id, leftGoals, rightGoals)
                         }
-                        onEditResult={props?.canEditResults ? () => openResultEditor(match) : undefined}
                         filled={match.filled}
                         userGoalsLeft={match.userGoalsLeft}
                         userGoalsRight={match.userGoalsRight}
@@ -297,7 +228,7 @@ export default function GroupsPage() {
           </CardsContainer>
 
           <Card
-            className={styles.sectionCard}
+            className={sectionCardClass}
             title={
               <>
                 {todayMatches
@@ -305,7 +236,7 @@ export default function GroupsPage() {
                   : i18n.upcomingMatchesLabel}
               </>
             }
-            gridArea="following"
+            gridArea="sidebar"
           >
             <CardContent>
               {(todayMatches || nextMatches)?.length ? (
@@ -324,7 +255,6 @@ export default function GroupsPage() {
                       onChange={(leftGoals, rightGoals) =>
                         handleGoalsChange(match.id, leftGoals, rightGoals)
                       }
-                      onEditResult={props?.canEditResults ? () => openResultEditor(match) : undefined}
                       filled={match.filled}
                       userGoalsLeft={match.userGoalsLeft}
                       userGoalsRight={match.userGoalsRight}
@@ -340,53 +270,6 @@ export default function GroupsPage() {
           </Card>
         </GroupsContainer>
       </Container>
-      {props?.canEditResults && editingMatch && (
-        <Modal
-          title={editingMatch.filled ? "Update result" : "Set result"}
-          onClose={closeResultEditor}
-        >
-          <div className={styles.resultEditor}>
-            <div className={styles.resultEditorTeams}>
-              <div className={styles.resultEditorTeam}>
-                <CountryFlag code={editingLeftCountry?.code} />
-                <span>{editingLeftCountry?.shortName ?? editingLeftCountry?.name ?? ""}</span>
-              </div>
-              <span className={styles.resultEditorVersus}>vs</span>
-              <div className={styles.resultEditorTeam}>
-                <CountryFlag code={editingRightCountry?.code} />
-                <span>{editingRightCountry?.shortName ?? editingRightCountry?.name ?? ""}</span>
-              </div>
-            </div>
-            <div className={styles.resultEditorInputs}>
-              <input
-                min={0}
-                max={99}
-                type="number"
-                inputMode="decimal"
-                value={adminGoalsLeft}
-                onChange={(event) => setAdminGoalsLeft(event.target.value)}
-              />
-              <span>-</span>
-              <input
-                min={0}
-                max={99}
-                type="number"
-                inputMode="decimal"
-                value={adminGoalsRight}
-                onChange={(event) => setAdminGoalsRight(event.target.value)}
-              />
-            </div>
-            <div className={styles.resultEditorActions}>
-              <Button variant="outline" onClick={closeResultEditor} disabled={savingResult}>
-                Cancel
-              </Button>
-              <Button onClick={handleSaveResult} disabled={!canSaveAdminResult || savingResult}>
-                {savingResult ? "Saving" : editingMatch.filled ? "Update result" : "Set result"}
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
       <Footer>
         <BrandLogo />
         <LocaleSelect />

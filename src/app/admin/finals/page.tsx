@@ -1,36 +1,37 @@
 'use client'
 import React from "react";
-import { Match, Stage } from "@/generated/prisma";
+import { Match } from "@/generated/prisma";
 import { BrandLogo } from "@/components/common/BrandLogo";
 import { Button } from "@/components/common/Button";
-import {
-  HeaderMessage,
-  LeniBall,
-  HeaderMenu,
-} from "@/components/common/Header";
+import { HeaderMenu } from "@/components/common/Header";
+import { WelcomeBar } from "@/components/common/Header/WelcomeBar";
+import { Meta } from "@/components/common/Meta";
 import {
   Layout,
   Footer,
-  Header,
   Container,
+  Card,
   ContainerHeader,
+  CardContent,
 } from "@/layout";
 import { useRequireSession } from "@/hooks";
+import { useInterval } from "@/hooks/useInterval";
+import { useRouter } from "next/navigation";
 import axios from "axios";
-import commonStyles from "@/styles/CommonStyles.module.scss";
 import {
   getAdminFinalsMatchLooser,
   getAdminFinalsMatchWinner,
 } from "@/utils/points";
 import { MatchFinalsInput } from "@/components/common/MatchFinalsInput";
 import {
-  BracketIcon,
-  BracketsContainer,
-  BracketTitle,
   FinalsContainer,
-  bracketOffsetQuarter,
+  FinalsBracket,
+  BracketsMobileContainer,
 } from "@/components/view/Finals";
-import { className } from "@/utils/classname";
+import {
+  Collapsable,
+  CollapsableContainer,
+} from "@/components/common/Collapsable";
 import { LocaleSelect } from "@/components/common/LocaleSelect";
 import { useLocalizedText } from "@/locale";
 import {
@@ -57,18 +58,32 @@ type UIMatch = Pick<
 
 interface AdminFinalsData {
   matches: UIMatch[];
+  todayMatches?: UIMatch[];
 }
-
-const getMatchOrder = (matchStage: Stage) => {
-  return getFinalsStageOrder(matchStage);
-};
 
 export default function AdminFinalsPage() {
   const session = useRequireSession();
+  const router = useRouter();
   const i18n = useLocalizedText();
+  const timezone = React.useMemo(() => new Date().getTimezoneOffset().toString(), []);
 
-  const { data } = useQuery<AdminFinalsData>({ queryKey: ["admin-finals-data"], queryFn: () => fetch("/api/admin-finals-data").then((r) => r.json()), enabled: session.status === "authenticated" });
+  // Admin-only: admin-finals-data returns 403 for non-admins — bounce them.
+  const { data } = useQuery<AdminFinalsData | null>({
+    queryKey: ["admin-finals-data", timezone],
+    queryFn: async () => {
+      const res = await fetch(`/api/admin-finals-data?timezone=${timezone}`);
+      if (res.status === 401 || res.status === 403) {
+        router.replace("/rooms");
+        return null;
+      }
+      return res.json();
+    },
+    enabled: session.status === "authenticated",
+    retry: false,
+  });
 
+  const [now, setNow] = React.useState(() => Date.now());
+  useInterval(() => setNow(Date.now()), 60000);
   const [updating, setUpdating] = React.useState(false);
   const [originalMatches, setOriginalMatches] = React.useState<UIMatch[]>([]);
   const [matches, setMatches] = React.useState<UIMatch[]>([]);
@@ -88,6 +103,17 @@ export default function AdminFinalsPage() {
     );
   }, [matches]);
 
+  // Today's knockout matches, reflecting in-progress edits from the bracket.
+  const todayMatches = React.useMemo(() => {
+    return data?.todayMatches?.map(
+      (match) => computedMatches.find((m) => m.id === match.id) || match
+    );
+  }, [data?.todayMatches, computedMatches]);
+
+  // Stable across renders (functional updater, no deps) so memoized
+  // MatchFinalsInputs keep a referentially-stable onChange and only the edited
+  // match re-renders. Winners are re-resolved from the previous state inside the
+  // updater rather than depending on the derived `computedMatches`.
   const handleMatchChange = React.useCallback(
     (id: string) =>
       (value: {
@@ -98,8 +124,12 @@ export default function AdminFinalsPage() {
         penaltisLeft?: number | null;
         penaltisRight?: number | null;
       }) => {
-        setMatches(
-          computedMatches.map((match) =>
+        setMatches((prev) =>
+          resolveFinalsMatches(
+            prev,
+            getAdminFinalsMatchWinner,
+            getAdminFinalsMatchLooser
+          ).map((match) =>
             match.id === id
               ? {
                   ...match,
@@ -114,7 +144,7 @@ export default function AdminFinalsPage() {
           )
         );
       },
-    [computedMatches]
+    []
   );
 
   const differentMatches = React.useMemo(() => {
@@ -161,26 +191,24 @@ export default function AdminFinalsPage() {
   }, []);
 
   return (
-    <Layout>
-      <Header>
-        <HeaderMessage
-          title={i18n.headerTitle}
-          subtitle={
-            <>
-              {i18n.headerWelcomeLine}
-              <br />
-              {i18n.headerWelcomeLine1}
-              <br />
-              <span>{i18n.headerWelcomeLine2}</span>.
-            </>
-          }
-        />
-        <Button onClick={handleStartFinals}>Start Finals</Button>
-        <LeniBall />
-        <HeaderMenu />
-      </Header>
+    <Layout dark className="relative overflow-hidden before:hidden">
+      <Meta />
+      <WelcomeBar
+        title={i18n.headerTitle}
+        deadlinePre={i18n.headerWelcomeLine1}
+        deadlinePost={i18n.headerWelcomeLine2}
+      >
+        <div className="flex items-center gap-3 max-[640px]:gap-2">
+          <Button variant="secondary" onClick={handleStartFinals}>
+            Start Finals
+          </Button>
+          <div className="shrink-0 [&_div:has(>img)]:!h-[46px] [&_div:has(>img)]:!w-[46px] [&_div:has(>img)_img]:!h-[46px] [&_div:has(>img)_img]:!w-[46px] max-[640px]:[&_div:has(>img)]:!h-[40px] max-[640px]:[&_div:has(>img)]:!w-[40px] max-[640px]:[&_div:has(>img)_img]:!h-[40px] max-[640px]:[&_div:has(>img)_img]:!w-[40px]">
+            <HeaderMenu compact />
+          </div>
+        </div>
+      </WelcomeBar>
       <Container full>
-        <FinalsContainer full admin>
+        <FinalsContainer full>
           <ContainerHeader
             sticky
             title={i18n.finalsTitle}
@@ -189,127 +217,85 @@ export default function AdminFinalsPage() {
             <Button
               variant="transparent"
               disabled={!isModified}
-              className={commonStyles.marginLeftAuto}
+              className="ml-auto"
               onClick={handleSave}
             >
-              {i18n.buttonLabelSave}
+              {updating ? i18n.buttonLabelSaving : i18n.buttonLabelSave}
             </Button>
           </ContainerHeader>
-          <BracketsContainer gridArea="matches">
-            <BracketTitle full order={0}>{i18n.FINALS_16}</BracketTitle>
-            {computedMatches
-              .filter((x) => getFinalsStageGroup(x.stage) === "FINALS_16")
-              .sort((a, b) => getFinalsStageOrder(a.stage) - getFinalsStageOrder(b.stage))
-              .map((match) => (
-                <MatchFinalsInput
-                  key={match.id}
-                  date={new Date(match.date)}
-                  countryLeftId={match.countryLeftId}
-                  goalsLeft={match.goalsLeft ?? undefined}
-                  countryRightId={match.countryRightId}
-                  goalsRight={match.goalsRight ?? undefined}
-                  penaltisLeft={match.penaltisLeft ?? null}
-                  penaltisRight={match.penaltisRight ?? null}
-                  onChange={handleMatchChange(match.id)}
-                  countryInput
-                  order={getMatchOrder(match.stage)}
-                />
+          {/* Desktop: clean bracket tree (admin = editable country pickers). */}
+          <FinalsBracket
+            matches={computedMatches}
+            now={now}
+            onChange={handleMatchChange}
+            admin
+          />
+          {/* Mobile: collapsible accordion, mirroring /finals. */}
+          <BracketsMobileContainer gridArea="matches">
+            <CollapsableContainer>
+              {(
+                [
+                  ["FINALS_16", i18n.FINALS_16],
+                  ["FINALS_8", i18n.FINALS_8],
+                  ["FINALS_4", i18n.FINALS_4],
+                  ["FINALS_2", i18n.FINALS_2],
+                  ["FINAL", i18n.FINAL],
+                ] as const
+              ).map(([group, title]) => (
+                <Collapsable key={group} title={title}>
+                  {computedMatches
+                    .filter((x) => getFinalsStageGroup(x.stage) === group)
+                    .sort(
+                      (a, b) =>
+                        getFinalsStageOrder(a.stage) - getFinalsStageOrder(b.stage)
+                    )
+                    .map((match, index) => (
+                      <MatchFinalsInput
+                        key={match.id}
+                        date={new Date(match.date)}
+                        countryLeftId={match.countryLeftId}
+                        goalsLeft={match.goalsLeft ?? undefined}
+                        countryRightId={match.countryRightId}
+                        goalsRight={match.goalsRight ?? undefined}
+                        penaltisLeft={match.penaltisLeft ?? null}
+                        penaltisRight={match.penaltisRight ?? null}
+                        onChange={handleMatchChange(match.id)}
+                        countryInput
+                        order={index + 1}
+                      />
+                    ))}
+                </Collapsable>
               ))}
-            <BracketIcon order={17} />
-            <BracketIcon order={17} />
-            <BracketIcon order={17} />
-            <BracketIcon order={17} />
-            <BracketIcon order={17} />
-            <BracketIcon order={17} />
-            <BracketIcon order={17} />
-            <BracketIcon order={17} />
-            <BracketTitle full order={17}>{i18n.FINALS_8}</BracketTitle>
-            {computedMatches
-              .filter((x) => getFinalsStageGroup(x.stage) === "FINALS_8")
-              .sort((a, b) => getFinalsStageOrder(a.stage) - getFinalsStageOrder(b.stage))
-              .map((match) => (
-                <MatchFinalsInput
-                  key={match.id}
-                  date={new Date(match.date)}
-                  countryLeftId={match.countryLeftId}
-                  goalsLeft={match.goalsLeft ?? undefined}
-                  countryRightId={match.countryRightId}
-                  goalsRight={match.goalsRight ?? undefined}
-                  penaltisLeft={match.penaltisLeft ?? null}
-                  penaltisRight={match.penaltisRight ?? null}
-                  onChange={handleMatchChange(match.id)}
-                  countryInput
-                  order={getMatchOrder(match.stage)}
-                />
-              ))}
-            <BracketIcon order={26} />
-            <BracketIcon order={26} />
-            <BracketIcon order={26} />
-            <BracketIcon order={26} />
-            <BracketTitle order={26} full>{i18n.FINALS_4}</BracketTitle>
-            {computedMatches
-              .filter((x) => getFinalsStageGroup(x.stage) === "FINALS_4")
-              .sort((a, b) => getFinalsStageOrder(a.stage) - getFinalsStageOrder(b.stage))
-              .map((match) => (
-                <MatchFinalsInput
-                  key={match.id}
-                  date={new Date(match.date)}
-                  countryLeftId={match.countryLeftId}
-                  goalsLeft={match.goalsLeft ?? undefined}
-                  countryRightId={match.countryRightId}
-                  goalsRight={match.goalsRight ?? undefined}
-                  penaltisLeft={match.penaltisLeft ?? null}
-                  penaltisRight={match.penaltisRight ?? null}
-                  onChange={handleMatchChange(match.id)}
-                  countryInput
-                  order={getMatchOrder(match.stage)}
-                />
-              ))}
-            <BracketIcon order={31} big />
-            <BracketIcon order={31} big />
-            <BracketTitle className={bracketOffsetQuarter} order={31} full>{i18n.FINALS_2}</BracketTitle>
-            {computedMatches
-              .filter((x) => getFinalsStageGroup(x.stage) === "FINALS_2")
-              .sort((a, b) => getFinalsStageOrder(a.stage) - getFinalsStageOrder(b.stage))
-              .map((match, index) => (
-                <MatchFinalsInput
-                  key={match.id}
-                  className={className(index === 0 && bracketOffsetQuarter)}
-                  date={new Date(match.date)}
-                  countryLeftId={match.countryLeftId}
-                  goalsLeft={match.goalsLeft ?? undefined}
-                  countryRightId={match.countryRightId}
-                  goalsRight={match.goalsRight ?? undefined}
-                  penaltisLeft={match.penaltisLeft ?? null}
-                  penaltisRight={match.penaltisRight ?? null}
-                  onChange={handleMatchChange(match.id)}
-                  countryInput
-                  order={getMatchOrder(match.stage)}
-                />
-              ))}
-            <BracketIcon className={className(bracketOffsetQuarter)} order={34} big />
-            <BracketTitle className={className(bracketOffsetQuarter)} order={34}>{i18n.FINAL}</BracketTitle>
-            <BracketTitle order={34}>{i18n.THIRD_PLACE}</BracketTitle>
-            {computedMatches
-              .filter((x) => getFinalsStageGroup(x.stage) === "FINAL")
-              .sort((a, b) => getFinalsStageOrder(a.stage) - getFinalsStageOrder(b.stage))
-              .map((match, index) => (
-                <MatchFinalsInput
-                  className={className(index === 0 && bracketOffsetQuarter)}
-                  key={match.id}
-                  date={new Date(match.date)}
-                  countryLeftId={match.countryLeftId}
-                  goalsLeft={match.goalsLeft ?? undefined}
-                  countryRightId={match.countryRightId}
-                  goalsRight={match.goalsRight ?? undefined}
-                  penaltisLeft={match.penaltisLeft ?? null}
-                  penaltisRight={match.penaltisRight ?? null}
-                  onChange={handleMatchChange(match.id)}
-                  countryInput
-                  order={getMatchOrder(match.stage)}
-                />
-              ))}
-          </BracketsContainer>
+            </CollapsableContainer>
+          </BracketsMobileContainer>
+          <Card
+            title={todayMatches ? i18n.todayMatchesLabel : i18n.upcomingMatchesLabel}
+            gridArea="following"
+          >
+            <CardContent>
+              {todayMatches?.length ? (
+                todayMatches.map((match, index) => (
+                  <MatchFinalsInput
+                    key={match.id}
+                    date={new Date(match.date)}
+                    countryLeftId={match.countryLeftId}
+                    goalsLeft={match.goalsLeft ?? undefined}
+                    countryRightId={match.countryRightId}
+                    goalsRight={match.goalsRight ?? undefined}
+                    penaltisLeft={match.penaltisLeft ?? null}
+                    penaltisRight={match.penaltisRight ?? null}
+                    onChange={handleMatchChange(match.id)}
+                    countryInput
+                    order={index + 1}
+                  />
+                ))
+              ) : (
+                <div style={{ padding: "12px", textAlign: "center" }}>
+                  {i18n.noMoreMatches}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </FinalsContainer>
       </Container>
       <Footer>

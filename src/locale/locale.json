@@ -102,8 +102,9 @@
     "profileDarkModeLabel": "Modo oscuro",
     "profilePublicLabel": "Mi prode es público",
     "profileBackgroundLabel": "Fondo",
+    "profileLanguageLabel": "Idioma",
 
-    "createTitle": "Crear nuevo prode",
+    "createTitle": "Nuevo prode",
     "editTitle": "EDITANDO PRODE - ",
     "createGeneralTitle": "General",
     "createPointsTitle": "Puntajes",
@@ -228,8 +229,9 @@
     "profilePublicLabel": "My predictions are public",
     "profileDarkModeLabel": "Dark Mode",
     "profileBackgroundLabel": "Background",
+    "profileLanguageLabel": "Language",
 
-    "createTitle": "CREATE NEW ROOM",
+    "createTitle": "New prode",
     "editTitle": "EDITING ROOM - ",
     "createGeneralTitle": "General",
     "createPointsTitle": "Points",

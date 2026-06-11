@@ -1,13 +1,12 @@
+"use client";
+
 import axios from "axios";
 import { useSession } from "next-auth/react";
 import React from "react";
-import { useLocalizedText } from "../../../../locale";
 import { className } from "../../../../utils/classname";
 import { CogIcon } from "../../Icons";
-import { Modal } from "../../Modal";
 import { UserImage } from "../../UserImage";
 import { HeaderModal } from "../HeaderModal";
-import styles from "./HeaderMenu.module.scss";
 
 interface HeaderMenuProps {
   className?: string;
@@ -21,15 +20,14 @@ interface HeaderMenuProps {
 export function HeaderMenu(props: React.PropsWithChildren<HeaderMenuProps>) {
   const session = useSession();
   const [modalOpen, setModalOpen] = React.useState(false);
-  const [saving, setSaving] = React.useState(false);
 
   const handleOpen = React.useCallback(() => {
-    if (!modalOpen) setModalOpen(true);
-  }, [modalOpen]);
+    setModalOpen(true);
+  }, []);
 
   const handleCancel = React.useCallback(() => {
-    if (modalOpen) setModalOpen(false);
-  }, [modalOpen]);
+    setModalOpen(false);
+  }, []);
 
   const handleSave = React.useCallback(
     (
@@ -39,7 +37,6 @@ export function HeaderMenu(props: React.PropsWithChildren<HeaderMenuProps>) {
       background: string,
       image: string | null
     ) => {
-      setSaving(true);
       axios
         .patch("/api/profile", {
           name,
@@ -49,7 +46,6 @@ export function HeaderMenu(props: React.PropsWithChildren<HeaderMenuProps>) {
           image,
         })
         .then((response) => {
-          setSaving(false);
           if (response.status === 200) {
             setModalOpen(false);
             window.location.reload();
@@ -60,13 +56,22 @@ export function HeaderMenu(props: React.PropsWithChildren<HeaderMenuProps>) {
   );
 
   return (
-    <div
-      className={className(props.className, styles.headerMenu)}
-      data-testid="header-menu"
-      onClick={handleOpen}
-    >
-      <UserImage small={props.compact} image={session?.data?.user?.image} />
-      <CogIcon className={styles.cogIcon} />
+    <>
+      <button
+        type="button"
+        data-testid="header-menu"
+        onClick={handleOpen}
+        className={className(
+          "relative ml-3 flex cursor-pointer border-0 bg-transparent p-0 focus:outline-none",
+          props.className
+        )}
+      >
+        <UserImage
+          small={props.compact}
+          image={session?.data?.user?.image}
+        />
+        <CogIcon className="absolute bottom-0 right-0" />
+      </button>
       {modalOpen && (
         <HeaderModal
           image={session?.data?.user?.image}
@@ -80,6 +85,6 @@ export function HeaderMenu(props: React.PropsWithChildren<HeaderMenuProps>) {
           onCancel={handleCancel}
         />
       )}
-    </div>
+    </>
   );
 }

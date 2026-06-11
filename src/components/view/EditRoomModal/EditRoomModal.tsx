@@ -13,6 +13,14 @@ import {
 } from "../../common/Form";
 import { Modal } from "../../common/Modal";
 
+// Tighter row spacing inside the modal — the default FormInput margin-bottom
+// (2.5em) is too generous in this compact overlay. Passed to each FormInput.
+const compactInput = "!mb-[0.8em]";
+
+// Section header: stronger background + white bold text so the titles read
+// clearly against the modal body, overriding the pale FormSectionTitle bg.
+const sectionTitle = "!bg-brand-blue !text-white !font-bold";
+
 interface EditRoomModalProps {
   room: Pick<
     ProdeRoom,
@@ -70,9 +78,10 @@ export function EditRoomModal(props: EditRoomModalProps) {
     >
       <Form>
         <FormSection>
-          <FormSectionTitle>{i18n.createGeneralTitle}</FormSectionTitle>
+          <FormSectionTitle className={sectionTitle}>{i18n.createGeneralTitle}</FormSectionTitle>
           <FormSectionContent>
             <FormInput
+              className={compactInput}
               label={i18n.createNameLabel}
               type="string"
               inline
@@ -80,6 +89,7 @@ export function EditRoomModal(props: EditRoomModalProps) {
               onChange={handleChange("name")}
             />
             <FormInput
+              className={compactInput}
               label={i18n.createPasswordLabel}
               legend={i18n.createPasswordLegend}
               type="string"
@@ -88,6 +98,7 @@ export function EditRoomModal(props: EditRoomModalProps) {
               onChange={handleChange("password")}
             />
             <FormInput
+              className={compactInput}
               label={i18n.createDomainLabel}
               legend={i18n.createDomainLegend}
               type="string"
@@ -97,6 +108,7 @@ export function EditRoomModal(props: EditRoomModalProps) {
               onChange={handleChange("emailDomain")}
             />
             <FormInput
+              className={compactInput}
               label={i18n.createPublicLabel}
               legend={i18n.createPublicLegend}
               type="boolean"
@@ -105,9 +117,10 @@ export function EditRoomModal(props: EditRoomModalProps) {
               onChange={handleChange("public")}
             />
           </FormSectionContent>
-          <FormSectionTitle>{i18n.createPointsTitle}</FormSectionTitle>
+          <FormSectionTitle className={sectionTitle}>{i18n.createPointsTitle}</FormSectionTitle>
           <FormSectionContent>
             <FormInput
+              className={compactInput}
               label={i18n.createPointsResultLabel}
               legend={i18n.createPointsResultLegend}
               type="number"
@@ -116,6 +129,7 @@ export function EditRoomModal(props: EditRoomModalProps) {
               onChange={handleChange("pointsWinner")}
             />
             <FormInput
+              className={compactInput}
               label={i18n.createPointsGoalsLabel}
               legend={i18n.createPointsGoalsLegend}
               type="number"
@@ -124,6 +138,7 @@ export function EditRoomModal(props: EditRoomModalProps) {
               onChange={handleChange("pointsGoals")}
             />
             <FormInput
+              className={compactInput}
               label={i18n.createPointsPenaltisLabel}
               legend={i18n.createPointsPenaltisLegend}
               type="number"
